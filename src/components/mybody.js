@@ -6,7 +6,7 @@ class MyBody extends Component {
     this.state = { value: "", timers: [] };
   }
 
-  Address = "https://mybackcodetimer.herokuapp.com/";
+  Address = "https://mybackcodetimer.herokuapp.com";
   getData = () => {
     fetch(this.Address + "/getData")
       .then((res) => res.json())
