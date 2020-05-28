@@ -1,30 +1,29 @@
 import React, { Component } from "react";
 import "./mybody.css";
+
+import ApiService from "../service/api-service";
+
 class MyBody extends Component {
   constructor(props) {
     super(props);
+    this.apiService = new ApiService();
     this.state = { value: "", timers: [] };
   }
 
-  Address = "https://timerbackenddata.herokuapp.com";
-  getData = () => {
-    fetch(this.Address + "/getData")
-      .then((res) => res.json())
-      .then((result) => {
-        this.setState({ timers: result });
-        console.log(this.state);
-      });
-  };
-
   componentDidMount() {
-    this.getData();
-    let y = setInterval(() => {
+    this.apiService.getData((result) => {
+      this.setState({ timers: result });
+      console.log(this.state);
+    });
+
+    setInterval(() => {
       this.refreshData(this.state.timers);
     }, 1000);
   }
   getDisplayTime(st, interval) {
     let startTime = new Date(st);
-    startTime.setHours(startTime.getHours() + parseInt(interval));
+    const offSet = isNaN(parseInt(interval)) ? 0 : parseInt(interval);
+    startTime.setHours(startTime.getHours() + offSet);
     const endTime = startTime.getTime();
     // Update the count down every 1 second
 
@@ -40,11 +39,12 @@ class MyBody extends Component {
     // var p = ((minutes + seconds / 100) / 60) * 100;
     // Output the result in an element with id="timer"
     const displayTime =
-      hours < 0 ? "expired" : hours + "h" + minutes + "m" + seconds + "s";
+      hours < 0 ? "EXPIRED" : hours + "h" + minutes + "m" + seconds + "s";
     // If the count down is over, print expired
     if (left < 0) {
       status = "E";
     }
+    // isNaN(parseInt(interval)) ? 0 : parseInt(interval)
 
     return { displayTime, status };
   }
@@ -56,6 +56,9 @@ class MyBody extends Component {
           ...data[i],
           ...this.getDisplayTime(data[i].startTime, data[i].time),
         };
+        if (data[i].status === "E") {
+          this.timerStatusChange({ val: data[i], st: data[i].status });
+        }
       }
     }
     this.setState({ timers: data });
@@ -69,10 +72,12 @@ class MyBody extends Component {
     //FOR 3 HRS
 
     const timer = {
+      _id: undefined,
       name,
       time,
       startTime: 0,
       status: "A",
+      displayTime: undefined,
     };
     const options = {
       method: "POST",
@@ -83,16 +88,15 @@ class MyBody extends Component {
       body: JSON.stringify(timer),
     };
 
-    fetch(this.Address + "/addTimer", options)
-      .then((res) => res.json())
-      .then((result) => {
-        this.setState({
-          timers: [
-            ...this.state.timers,
-            { ...timer, _id: result._id, displayTime: "Newly Added" },
-          ],
-        });
+    this.apiService.addTimer(options, (result) => {
+      this.setState({
+        timers: [
+          ...this.state.timers,
+          { ...timer, _id: result._id, displayTime: "Newly Added" },
+        ],
       });
+    });
+
     //this.addData(timer);
 
     // console.log(this.state.timers);
@@ -140,22 +144,20 @@ class MyBody extends Component {
       body: JSON.stringify(timer),
     };
 
-    fetch(this.Address + "/updateTimer", options)
-      .then((res) => res.json())
-      .then((result) => {
-        if (st === "D") {
-          let data = this.state.timers.filter((v, k) => v._id !== val._id);
-          this.setState({ timers: data });
-        } else {
-          let data = this.state.timers;
-          for (let i = 0; i < data.length; i++) {
-            if (data[i]._id === val._id) {
-              data[i] = { ...data[i], startTime, status, displayTime };
-            }
+    this.apiService.updateTimer(options, (result) => {
+      if (st === "D") {
+        let data = this.state.timers.filter((v, k) => v._id !== val._id);
+        this.setState({ timers: data });
+      } else {
+        let data = this.state.timers;
+        for (let i = 0; i < data.length; i++) {
+          if (data[i]._id === val._id) {
+            data[i] = { ...data[i], startTime, status, displayTime };
           }
-          this.setState({ timers: data });
         }
-      });
+        this.setState({ timers: data });
+      }
+    });
 
     // startrd
     // deleted
